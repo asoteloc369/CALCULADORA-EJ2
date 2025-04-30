@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calculadora de Precios</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #e0f7fa, #fce4ec);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .emoji {
+      font-size: 2rem;
+    }
+    .is-invalid {
+      border-color: #dc3545;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card p-4 animate__animated animate__fadeInUp">
+      <h2 class="text-center mb-4">Calculadora de Precios <span class="emoji">💰</span></h2>
+      <div class="mb-3">
+        <label for="producto" class="form-label">Nombre del Producto</label>
+        <input type="text" class="form-control" id="producto" placeholder="Ej. Camiseta">
+      </div>
+      <div class="mb-3">
+        <label for="costo" class="form-label">Costo Base del Producto</label>
+        <input type="number" class="form-control" id="costo" placeholder="Ej. 100">
+      </div>
+      <div class="mb-3">
+        <label for="ganancia" class="form-label">Porcentaje de Ganancia Deseado (%)</label>
+        <input type="number" class="form-control" id="ganancia" placeholder="Ej. 30">
+      </div>
+      <div class="d-grid gap-2 mb-3">
+        <button class="btn btn-primary" onclick="calcularPrecio(true)">Calcular y Agregar a Lista</button>
+        <button class="btn btn-secondary" onclick="calcularPrecio(false)">Solo Calcular</button>
+        <button class="btn btn-warning" onclick="limpiarTodo()">Limpiar Todo</button>
+      </div>
+      <div id="resultado" class="mt-4 text-center animate__animated" style="display:none;">
+        <h4 class="mt-3">Precio de Venta Sugerido: <span id="precioFinal" class="text-success fw-bold"></span></h4>
+        <p class="mt-2">Tu ganancia estimada será de <span id="gananciaTotal" class="fw-bold"></span> <span class="emoji">📈</span></p>
+      </div>
+      <table class="table table-bordered table-hover mt-4" id="tablaProductos">
+        <thead class="table-light">
+          <tr>
+            <th>Producto</th>
+            <th>Costo</th>
+            <th>% Ganancia</th>
+            <th>Precio Venta</th>
+            <th>Ganancia</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success w-50" onclick="exportarExcel()">Exportar a Excel</button>
+        <button class="btn btn-danger w-50" onclick="exportarPDF()">Exportar a PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tablaBody = document.querySelector("#tablaProductos tbody");
+
+    function limpiarEstilos() {
+      ["producto", "costo", "ganancia"].forEach(id => {
+        document.getElementById(id).classList.remove("is-invalid");
+      });
+    }
+
+    function resetFormulario() {
+      document.getElementById("producto").value = "";
+      document.getElementById("costo").value = "";
+      document.getElementById("ganancia").value = "";
+    }
+
+    function limpiarTodo() {
+      resetFormulario();
+      limpiarEstilos();
+      document.getElementById("resultado").style.display = "none";
+      tablaBody.innerHTML = "";
+    }
+
+    function calcularPrecio(agregar = false) {
+      limpiarEstilos();
+
+      const producto = document.getElementById("producto").value.trim();
+      const costo = parseFloat(document.getElementById("costo").value);
+      const porcentaje = parseFloat(document.getElementById("ganancia").value);
+      const resultadoDiv = document.getElementById("resultado");
+      const precioFinal = document.getElementById("precioFinal");
+      const gananciaTotal = document.getElementById("gananciaTotal");
+
+      let valido = true;
+      if (!producto) {
+        document.getElementById("producto").classList.add("is-invalid");
+        valido = false;
+      }
+      if (isNaN(costo) || costo < 0) {
+        document.getElementById("costo").classList.add("is-invalid");
+        valido = false;
+      }
+      if (isNaN(porcentaje) || porcentaje < 0) {
+        document.getElementById("ganancia").classList.add("is-invalid");
+        valido = false;
+      }
+      if (!valido) return;
+
+      const precioVenta = costo + (costo * porcentaje / 100);
+      const ganancia = precioVenta - costo;
+
+      precioFinal.textContent = `$${precioVenta.toFixed(2)}`;
+      gananciaTotal.textContent = `$${ganancia.toFixed(2)}`;
+
+      resultadoDiv.style.display = "block";
+      resultadoDiv.classList.remove("animate__fadeOut");
+      resultadoDiv.classList.add("animate__fadeIn");
+
+      if (agregar) {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${producto}</td>
+          <td>$${costo.toFixed(2)}</td>
+          <td>${porcentaje}%</td>
+          <td>$${precioVenta.toFixed(2)}</td>
+          <td>$${ganancia.toFixed(2)}</td>
+        `;
+        tablaBody.appendChild(fila);
+        resetFormulario();
+      }
+    }
+
+    function exportarExcel() {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.table_to_sheet(document.getElementById("tablaProductos"));
+      XLSX.utils.book_append_sheet(wb, ws, "Productos");
+      XLSX.writeFile(wb, "precios_productos.xlsx");
+    }
+
+    function exportarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("Lista de Productos y Precios", 10, 10);
+      const rows = Array.from(tablaBody.querySelectorAll("tr")).map(tr =>
+        Array.from(tr.querySelectorAll("td")).map(td => td.textContent)
+      );
+      doc.autoTable({ head: [["Producto", "Costo", "% Ganancia", "Precio Venta", "Ganancia"]], body: rows, startY: 20 });
+      doc.save("precios_productos.pdf");
+    }
+  </script>
+</body>
+</html>
